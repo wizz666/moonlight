@@ -1,0 +1,99 @@
+
+
+#include <Adafruit_NeoPixel.h>
+
+const int STRAND_SIZE = 24; // we have a 30-LED strand
+const byte STRAND_PIN = 6; // putting the neopixels on pin 6
+Adafruit_NeoPixel strand = Adafruit_NeoPixel(STRAND_SIZE, STRAND_PIN, NEO_GRB + NEO_KHZ800);
+
+//#define DEBUG
+
+#ifdef DEBUG
+
+const int MOON_WIDTH = 5; // make our moon 5 pixels wide.
+const unsigned long NIGHT_TIMEms = 10L * 1000L; // 30 seconds
+const unsigned long REDRAW_DELAYms =  100L; // redraw twice a second
+const byte STRAND_BRIGHTNESS = 32; // one eightth brighness
+#else
+const int MOON_WIDTH = 5; // make our moon 5 pixels wide.
+const unsigned long NIGHT_TIMEms = 10L * 60L * 60L * 1000L; // the night is 10 hours long - in milliseconds
+const unsigned long REDRAW_DELAYms =  60L * 1000L; // redraw once a  minute - in milliseconds
+const byte STRAND_BRIGHTNESS = 64; // one quarter brighness
+#endif
+
+unsigned long lastUpdate;
+
+void setup() {
+  strand.begin();
+  // set the overall brightness of the strip to 160 out of a possible 255
+  strand.setBrightness(STRAND_BRIGHTNESS);
+  updateMoon();
+  lastUpdate = millis();
+
+#ifdef DEBUG
+  Serial.begin(57600);
+#endif
+}
+
+void loop() {
+  // update every 60 minutes (meansured in milliseconds)
+  if (millis() - lastUpdate > REDRAW_DELAYms) {
+    updateMoon();
+    lastUpdate = millis();
+  }
+
+}
+
+// ok. This function does the job of drawing the moon, based on what time it is.
+
+void updateMoon() {
+  strand.clear();
+
+  float now = ((float)millis()) / ((float)NIGHT_TIMEms); // "now" is a number between 0 and 1
+
+  if (now >= 1) return;
+
+#ifdef DEBUG
+  Serial.print(now);
+  Serial.print('\t');
+#endif
+
+
+  // the overall brighness of the moon depends on the time.
+  float moonBright = sin(now * PI);
+  if (moonBright <= 0 ) return;
+
+#ifdef DEBUG
+  Serial.print(moonBright);
+  Serial.print('\t');
+#endif
+
+  float moonPos = now * STRAND_SIZE;
+
+  for (int i = -MOON_WIDTH / 2 - 1; i <= MOON_WIDTH / 2 + 1; i++) {
+    int pix = moonPos + i;
+    if (pix < 0 || pix >= STRAND_SIZE) continue;
+
+    float bright = moonBright * cos((pix - moonPos) / MOON_WIDTH * PI);
+
+    // 'bright' may be negative at the start and end of the edge of the moon
+    if (bright > 0) {
+
+      bright = bright * bright; // this changes the profile of the sin by a bit
+
+      strand.setPixelColor(
+        pix,
+        // 200/200/255 should be a nice bluish white
+        (int)(0xE0 * bright),
+        (int)(0xE0 * bright),
+        (int)(0xFF * bright)
+      );
+    }
+  }
+
+  strand.show();
+
+#ifdef DEBUG
+  Serial.println();
+#endif
+}
