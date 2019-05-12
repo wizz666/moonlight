@@ -1,0 +1,67 @@
+
+#include <Adafruit_NeoPixel.h>
+
+
+const int STRAND_SIZE = 30; // we have a 30-LED strand
+const byte STRAND_PIN = 9; // putting the neopixels on pin 9
+Adafruit_NeoPixel strand = Adafruit_NeoPixel(STRAND_SIZE, STRAND_PIN, NEO_GRB + NEO_KHZ800);
+
+const int MOON_WIDTH = 5; // make our moon 5 pixels wide.
+
+const unsigned long NIGHT_TIMEms = 10L * 60L * 60L * 1000L; // the night is 10 hours long - in milliseconds
+const unsigned long REDRAW_DELAYms =  60L * 1000L; // redraw once a  minute - in milliseconds
+
+unsigned long lastUpdate;
+
+void setup() {
+  strand.begin();
+  // set the overall brightness of the strip to 160 out of a possible 255
+  strand.setBrightness(160);
+  updateMoon();
+  lastUpdate = millis();
+}
+
+void loop() {
+  // update every 60 minutes (meansured in milliseconds)
+  if (millis() - lastUpdate > REDRAW_DELAYms) {
+    updateMoon();
+    lastUpdate = millis();
+  }
+
+}
+
+// ok. This function does the job of drawing the moon, based on what time it is.
+
+void updateMoon() {
+  strand.clear();
+
+  float now = ((float)millis()) / ((float)NIGHT_TIMEms); // "now" is a number between 0 and 1
+
+  // the overall brighness of the moon depends on the time.
+  float moonBright = sin(now * PI);
+  if(moonBright <=0 ) return;
+ 
+
+  float moonPos = now * (STRAND_SIZE - MOON_WIDTH);
+
+  // I'll make pix slop over the end just a little.
+  for (int pix = moonPos; pix <= moonPos + MOON_WIDTH + 1 && pix < STRAND_SIZE; pix++) {
+    // ok! how bright should the pixel at moonPos be?
+
+    // I'll use the sin() function to make a blob that's bright in the middle
+
+    float bright = moonBright * sin((pix - moonPos) / MOON_WIDTH * PI);
+    // 'bright' may be negative at the start and end of the edge of the moon
+    if (bright > 0) {
+      strand.setPixelColor(
+        pix,
+        // 200/200/255 should be a nice bluish white
+        (int)(200 * bright),
+        (int)(200 * bright),
+        (int)(255 * bright)
+      );
+    }
+  }
+
+  strand.show();
+}
